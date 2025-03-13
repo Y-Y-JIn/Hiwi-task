@@ -6,7 +6,7 @@
 ### 1. Automatic Segmentation model
 LSTM-UNet<br />
 Mask R-CNN<br />
-U-net<br />
+U-net (U-net_final_v2 & inference_v2 & implementation of U-net model)<br />
 
 ### 2. Classification and labeling model
 ResNet50<br />
