@@ -4,6 +4,11 @@
 # All required files are located in the folder "U-net"  
   Path: "/home/nemolinux/Python/sam2/notebooks/Machine Learning model/Model_segmentation/U-net
 
+  Required files:
+  - U-net_final_v2
+  - inference_v2
+  - Implementation of U-net model
+
 
 
 # Process
