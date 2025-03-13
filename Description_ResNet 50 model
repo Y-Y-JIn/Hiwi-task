@@ -34,7 +34,6 @@ You can modify and customize the code below.
 
 
 
-
 -code line[95]
 # Define image transformations
 transform = transforms.Compose([
