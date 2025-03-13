@@ -4,7 +4,7 @@
 ## Model Classification 
 
 ### 1. Automatic Segmentation model
-LSTM-UNet (mask dataset is missing & issue)<br />
+LSTM-UNet (mask dataset is missing & issue with the image crop size)<br />
 Mask R-CNN (Fail)<br />
 Detectron2 (Fail)<br />
 U-net (include those files: U-net_final_v2 & inference_v2 & implementation of U-net model) (issue)<br />
