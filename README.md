@@ -9,8 +9,8 @@
 
 3. image_editor.ipynb ,   "image editor script to crop the bottom of SEM image"
 
-4. original_image & segmented_images , 
-     "original image dataset: 5 different image folders (tif.file) + segmented image dataset: 5 different image folders (jpg.file)"<br /><br />
+4. original_image , 
+     "original image dataset: 5 different image folders (tif.file)"<br /><br />
 
 
 
