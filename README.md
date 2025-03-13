@@ -1,19 +1,19 @@
 # Hiwi-task
 
 
-## Classification models
+## Model Classification 
 
 ### 1. automatic Segmentation model
-LSTM-UNet
-Mask R-CNN 
-U-net
+LSTM-UNet<br />
+Mask R-CNN<br />
+U-net<br />
 
 ### 2. Classification and labeling model
-ResNet50
-CNN
+ResNet50<br />
+CNN<br />
 
 ### 3. Hands-on segmentation model
-SAM2
+SAM2<br />
 <br /><br />
 
 
