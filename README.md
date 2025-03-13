@@ -3,18 +3,18 @@
 
 ## Classification models
 
-### automatic Segmentation model
+### 1. automatic Segmentation model
 LSTM-UNet
 Mask R-CNN 
 U-net
 
-### Classification and labeling model
+### 2. Classification and labeling model
 ResNet50
 CNN
 
-### hands on segmentation model
+### 3. Hands-on segmentation model
 SAM2
-
+<br /><br />
 
 
 
