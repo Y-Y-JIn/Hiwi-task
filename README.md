@@ -4,9 +4,10 @@
 ## Model Classification 
 
 ### 1. Automatic Segmentation model
-LSTM-UNet<br />
-Mask R-CNN<br />
-U-net (include those files: U-net_final_v2 & inference_v2 & implementation of U-net model)<br />
+LSTM-UNet (mask dataset is missing & issue)<br />
+Mask R-CNN (Fail)<br />
+Detectron2 (Fail)<br />
+U-net (include those files: U-net_final_v2 & inference_v2 & implementation of U-net model) (issue)<br />
 
 ### 2. Classification and labeling model
 ResNet50<br />
