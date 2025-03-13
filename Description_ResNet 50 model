@@ -1,13 +1,87 @@
-# Prerequisite
+# This ResNet50 model is built for classifying and labeling random images through training and testing datasets.
+
+
+# Data
+
+"label_model" 
+: transfer each file folder(5 different SEM image folders) to the 5 different dataset.csv
+
+"combined_labeled_files"
+: combine all 5 dataset.csv files to one dataset as "combined_dataset.csv"
+
+"image_paths_labels" 
+: labeling the data from "combined_dataset.csv" & save the result as "processed_image_labels.csv"
 
 
 
 # Path
 
+1. ResNet50 code script
+"/home/nemolinux/Python/sam2/notebooks/Machine Learning model/Model/ML_model_ResNet50"
+
+2. labeled dataset
+"/home/nemolinux/Python/sam2/notebooks/Machine Learning model/Model/processed_image_labels.csv"
+
+3. Related dataset files
+"/home/nemolinux/Python/sam2/notebooks/Machine Learning model/image/...
+"/home/nemolinux/Python/sam2/notebooks/Machine Learning model/Model/...
 
 
-# Data
+
+# Modification
+
+You can modify and customize the code below.
 
 
+
+
+-code line[95]
+# Define image transformations
+transform = transforms.Compose([
+    transforms.ToPILImage(),
+    transforms.Resize((224, 224)),
+    transforms.RandomHorizontalFlip(),
+    transforms.RandomRotation(15),
+    transforms.RandomAffine(degrees=30, translate=(0.1, 0.1)),
+    transforms.RandomResizedCrop(224),
+    transforms.ColorJitter(brightness=0.2, contrast=0.2),
+    transforms.RandomPerspective(distortion_scale=0.2, p=0.5),
+    transforms.ToTensor(),
+    transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+])
+
+
+
+
+-code line[135]
+# Define loss function and optimizer
+filtered_label_counts = Counter(df_filtered['label'])  # Compute label counts AFTER filtering
+class_weights = torch.tensor([1.0 / filtered_label_counts[l] for l in sorted(filtered_label_counts.keys())], dtype=torch.float32).to(device)
+criterion = torch.nn.CrossEntropyLoss(weight=class_weights)
+optimizer = torch.optim.Adam(model.parameters(), lr=0.0001, weight_decay=0.001)
+scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'min', patience=2, factor=0.5, min_lr=1e-6)
+
+
+
+
+-code line[174]
+# Training loop with early stopping
+for epoch in range(40):
+    model.train()
+    total_loss = 0
+    for images, labels in train_loader:
+        images, labels = images.to(device), labels.to(device)
+        
+        optimizer.zero_grad()
+        outputs = model(images)
+        loss = criterion(outputs, labels)
+        loss.backward()
+        optimizer.step()
+        total_loss += loss.item()
+    
+    print(f"Epoch {epoch + 1}, Loss: {total_loss / len(train_loader):.4f}")
+    
+
+  
 
 
