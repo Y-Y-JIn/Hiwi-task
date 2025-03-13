@@ -1,0 +1,108 @@
+import os
+import random
+import torch
+import numpy as np
+import cv2
+import matplotlib.pyplot as plt
+from PIL import Image
+import segmentation_models_pytorch as smp
+import torchvision.transforms as transforms
+
+# Move model to GPU if available, otherwise CPU
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+
+model = smp.Unet(
+    encoder_name="resnet34",
+    encoder_weights="imagenet",
+    in_channels=3,
+    classes=1,
+    activation=None
+).to(device)
+
+
+###############################################
+# 8.5. Load the trained model weights
+###############################################
+model_path = "/home/nemolinux/Python/sam2/notebooks/Machine Learning model/Model_segmentation/u_net_segmentation_model_v2.pth"
+model.load_state_dict(torch.load(model_path, map_location=device))
+model.eval()
+
+###############################################
+# 9. Inference + Colorization
+###############################################
+def colorize_binary_mask(binary_mask):
+    """
+    Given a binary mask (0 or 1),
+    find connected components, assign random color to each region.
+    Returns an (H, W, 3) RGB image.
+    """
+    mask_uint8 = (binary_mask > 0.5).astype(np.uint8)
+    num_labels, labels = cv2.connectedComponents(mask_uint8)
+
+    H, W = labels.shape
+    colored_image = np.zeros((H, W, 3), dtype=np.uint8)
+
+    import random
+    random.seed(42)
+    for label_id in range(1, num_labels):
+        r = random.randint(0, 255)
+        g = random.randint(0, 255)
+        b = random.randint(0, 255)
+        colored_image[labels == label_id] = [r, g, b]
+
+    return colored_image
+
+def inference_on_image(model, image_path, device=device):
+    """
+    1) Load image, resize, convert to tensor
+    2) Forward pass
+    3) Threshold => binary
+    4) Colorize connected components
+    """
+    model.eval()
+    original_img = Image.open(image_path).convert("RGB")
+    transform_ = transforms.Compose([
+        transforms.Resize((256, 256)),
+        transforms.ToTensor(),
+    ])
+    img_tensor = transform_(original_img).unsqueeze(0).to(device)
+
+    with torch.no_grad():
+        logits = model(img_tensor)
+    binary_mask = (logits > 0.5).float().squeeze().cpu().numpy()
+
+    colored_mask = colorize_binary_mask(binary_mask)
+    return original_img.resize((256, 256)), colored_mask
+
+###############################################
+# 10. (Optional) Example: Run Inference + Show
+###############################################
+if __name__ == "__main__":
+    # Example usage after training:
+    test_image_path = "/home/nemolinux/Python/sam2/notebooks/image_SEM/new_image/Mix MgO - 10.tif"
+    if os.path.exists(test_image_path):
+        resized_img, colorized = inference_on_image(model, test_image_path)
+
+        # Visualize side by side
+        plt.figure(figsize=(10, 5))
+        plt.subplot(1, 2, 1)
+        plt.imshow(resized_img)
+        plt.title("Original (Resized)")
+        plt.axis("off")
+
+        plt.subplot(1, 2, 2)
+        plt.imshow(colorized)
+        plt.title("Colorized Mask")
+        plt.axis("off")
+        plt.show()
+
+        # Save the colorized result
+        out_dir = "/home/nemolinux/Python/sam2/notebooks/image_SEM/new_image"
+        os.makedirs(out_dir, exist_ok=True)
+        out_path = os.path.join(out_dir, "inference_colorized.png")
+        # cv2 expects BGR, so convert from RGB if using cv2.imwrite
+        cv2.imwrite(out_path, cv2.cvtColor(colorized, cv2.COLOR_RGB2BGR))
+        print(f"Colorized inference mask saved to: {out_path}")
+    else:
+        print("No test_image_path found to run inference!")

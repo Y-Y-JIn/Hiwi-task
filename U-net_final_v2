@@ -1,0 +1,200 @@
+import os
+from glob import glob
+import numpy as np
+import matplotlib.pyplot as plt
+import torch
+import torch.nn as nn
+import torch.optim as optim
+from torch.utils.data import DataLoader, Dataset
+import torchvision.transforms as transforms
+from PIL import Image
+import cv2  # For connectedComponents
+import segmentation_models_pytorch as smp
+
+###############################################
+# 1. Configuration: Update these paths!
+###############################################
+Original_folder_PATH = "/home/nemolinux/Python/sam2/notebooks/image_SEM/original_image"
+Segmented_folder_PATH = "/home/nemolinux/Python/sam2/notebooks/image_SEM/segmented_images"
+# Folders inside these might be e.g. ["20210215", "20210412", ...]
+# Adjust as needed:
+original_subfolders = ["20210215", "20210412", "20210415", "HR_np", "soil_extracts"]
+mask_subfolders = ["20210215_v3", "20210412_v3", "20210415_v3", "HR_np_v3", "soil_extracts_v3"]
+
+model_save_path = "/home/nemolinux/Python/sam2/notebooks/Machine Learning model/Model_segmentation/u_net_segmentation_model_v2.pth"
+
+# Number of epochs
+num_epochs = 30
+batch_size = 4
+learning_rate = 1e-4
+
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+print(f"Using device: {device}")
+
+###############################################
+# 2. Match image and mask files
+###############################################
+def normalize_filename(name):
+    """Normalize filenames by removing extra spaces and underscores."""
+    return name.strip().replace("  ", " ").replace("_", " ").lower()
+
+image_paths = []
+mask_paths = []
+
+for orig_sub, mask_sub in zip(original_subfolders, mask_subfolders):
+    orig_folder = os.path.join(Original_folder_PATH, orig_sub)
+    mask_folder = os.path.join(Segmented_folder_PATH, mask_sub)
+
+    # Gather .tif and .jpg
+    orig_images = {
+        normalize_filename(os.path.splitext(os.path.basename(p))[0]): p
+        for p in glob(os.path.join(orig_folder, "*.tif"))
+    }
+    masks = {
+        normalize_filename(os.path.splitext(os.path.basename(p))[0]): p
+        for p in glob(os.path.join(mask_folder, "*.jpg"))
+    }
+
+    # Match by filename
+    matched_filenames = set(orig_images.keys()).intersection(masks.keys())
+    for filename in matched_filenames:
+        image_paths.append(orig_images[filename])
+        mask_paths.append(masks[filename])
+
+print(f"✅ Loaded {len(image_paths)} matched image-mask pairs.")
+if len(image_paths) == 0:
+    raise RuntimeError("❌ No matched image-mask pairs found! Check your folder paths or filename patterns.")
+
+###############################################
+# 3. Metrics: IoU, Dice, Pixel Accuracy
+###############################################
+def iou_score(y_true, y_pred, threshold=0.5):
+    y_pred = (y_pred > threshold).float()
+    intersection = torch.sum(y_true * y_pred)
+    union = torch.sum(y_true) + torch.sum(y_pred) - intersection
+    iou = intersection / (union + 1e-6)
+    return iou
+
+def dice_coefficient(y_true, y_pred, threshold=0.5):
+    y_pred = (y_pred > threshold).float()
+    intersection = torch.sum(y_true * y_pred)
+    dice = (2.0 * intersection) / (torch.sum(y_true) + torch.sum(y_pred) + 1e-6)
+    return dice
+
+###############################################
+# 4. Convert SAM mask (multi-colored) -> Binary
+###############################################
+def convert_mask_to_binary(mask):
+    """
+    Convert a multi-colored segmentation mask to binary class labels.
+    - If mask pixel is non-zero, set to 1
+    - Else, 0
+    """
+    mask = np.array(mask)
+    if len(mask.shape) == 2:  # Already grayscale
+        return (mask > 0).astype(np.int64)
+
+    # shape: (H, W, 3)
+    mask_reshaped = mask.reshape(-1, 3)
+    # If any channel is non-zero => treat as 1
+    non_zero = np.any(mask_reshaped != 0, axis=1)
+    binary = non_zero.reshape(mask.shape[0], mask.shape[1])
+    return binary.astype(np.int64)
+
+###############################################
+# 5. Dataset Class
+###############################################
+class ParticleDataset(Dataset):
+    def __init__(self, image_paths, mask_paths):
+        self.image_paths = image_paths
+        self.mask_paths = mask_paths
+
+        # Same transforms for image and mask resizing
+        self.image_transform = transforms.Compose([
+            transforms.Resize((256, 256)),
+            transforms.ToTensor(),
+        ])
+        self.mask_transform = transforms.Compose([
+            transforms.Resize((256, 256)),
+            transforms.ToTensor(),
+        ])
+
+    def __len__(self):
+        return len(self.image_paths)
+
+    def __getitem__(self, idx):
+        img_path = self.image_paths[idx]
+        mask_path = self.mask_paths[idx]
+
+        # Load as RGB
+        img = Image.open(img_path).convert("RGB")
+        mask = Image.open(mask_path).convert("RGB")
+
+        # Resize + ToTensor
+        img = self.image_transform(img)
+        mask = self.mask_transform(mask)
+
+        # Convert mask to (H, W, C) for custom processing
+        mask = mask.permute(1, 2, 0).numpy()
+
+        # Convert to binary
+        mask = convert_mask_to_binary(mask)
+
+        # Convert to torch float, add channel dimension => (1, H, W)
+        mask = torch.tensor(mask, dtype=torch.float32).unsqueeze(0)
+
+        return img, mask
+
+###############################################
+# 6. Create DataLoader
+###############################################
+dataset = ParticleDataset(image_paths, mask_paths)
+dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
+
+###############################################
+# 7. Define U-Net Model
+###############################################
+model = smp.Unet(
+    encoder_name="resnet34",
+    encoder_weights="imagenet",
+    in_channels=3,
+    classes=1,
+    activation=None
+).to(device)
+
+loss_fn = nn.BCEWithLogitsLoss()
+optimizer = optim.Adam(model.parameters(), lr=learning_rate)
+
+###############################################
+# 8. Training Loop
+###############################################
+print("Starting Training...")
+for epoch in range(num_epochs):
+    model.train()
+    running_loss = 0.0
+    running_iou = 0.0
+    running_dice = 0.0
+
+    for imgs, masks in dataloader:
+        imgs, masks = imgs.to(device), masks.to(device)
+
+        optimizer.zero_grad()
+        outputs = model(imgs)
+        loss = loss_fn(outputs, masks)
+        loss.backward()
+        optimizer.step()
+
+        running_loss += loss.item()
+        running_iou += iou_score(masks, outputs).item()
+        running_dice += dice_coefficient(masks, outputs).item()
+
+    avg_loss = running_loss / len(dataloader)
+    avg_iou = running_iou / len(dataloader)
+    avg_dice = running_dice / len(dataloader)
+
+    print(f"Epoch [{epoch+1}/{num_epochs}], Loss: {avg_loss:.4f}, IoU: {avg_iou:.4f}, Dice: {avg_dice:.4f}")
+
+# Save the model
+os.makedirs(os.path.dirname(model_save_path), exist_ok=True)
+torch.save(model.state_dict(), model_save_path)
+print(f"Model saved to {model_save_path}")

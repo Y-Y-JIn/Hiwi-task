@@ -1,0 +1,52 @@
+import torch
+import torch.nn as nn
+import torch.optim as optim
+import torchvision.transforms as transforms
+from torch.utils.data import DataLoader, Dataset
+import segmentation_models_pytorch as smp
+import os
+from glob import glob
+from PIL import Image
+import numpy as np
+import matplotlib.pyplot as plt
+
+
+model = smp.Unet(encoder_name="resnet34", encoder_weights="imagenet", in_channels=3, classes=1, activation=None)
+model = model.cuda()  # Move to GPU if available
+
+
+# Load the saved model for inference
+model_path = "/home/nemolinux/Python/sam2/notebooks/Machine Learning model/Model_segmentation/u_net_segmentation_model_v2.pth"  # Update this with the correct model path if needed
+model.load_state_dict(torch.load(model_path, weights_only=True))
+model.eval()
+
+# Process new images for inference
+new_image_path = "/home/nemolinux/Python/sam2/notebooks/image_SEM/new_image/Mix MgO - 10.tif"  # Update this with the path to your new image
+new_image = Image.open(new_image_path).convert("RGB")
+
+# Apply the necessary transformations to the image (resize, convert to tensor, etc.)
+new_image = transforms.Resize((256, 256))(new_image)
+new_image = transforms.ToTensor()(new_image).unsqueeze(0).cuda()  # Add batch dimension and move to GPU
+
+# Make prediction
+with torch.no_grad():
+    prediction = model(new_image)
+
+# Post-process the predicted mask
+predicted_mask = (prediction > 0.5).cpu().numpy().squeeze()  # Threshold the prediction for binary mask
+
+# Create a directory to save the result if it doesn't exist
+save_directory = "/home/nemolinux/Python/sam2/notebooks/image_SEM/new_image"  # Specify the directory to save the result
+os.makedirs(save_directory, exist_ok=True)
+
+# Save the predicted mask as an image
+output_path = os.path.join(save_directory, "predicted_mask.png")
+plt.imsave(output_path, predicted_mask, cmap="tab10")  # Save the mask with different colormap
+
+
+# Visualize the predicted mask
+plt.imshow(predicted_mask, cmap="tab10")  # You can change the cmap if you prefer a different color scheme
+plt.title("Predicted Mask")
+# plt.show()
+
+print(f"Predicted mask saved to: {output_path}")
