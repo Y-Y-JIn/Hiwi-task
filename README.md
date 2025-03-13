@@ -1,5 +1,23 @@
 # Hiwi-task
 
+
+## Classification models
+
+### automatic Segmentation model
+LSTM-UNet
+Mask R-CNN 
+U-net
+
+### Classification and labeling model
+ResNet50
+CNN
+
+### hands on segmentation model
+SAM2
+
+
+
+
 ## How to access and build SAM2 for segmentation
 
 
