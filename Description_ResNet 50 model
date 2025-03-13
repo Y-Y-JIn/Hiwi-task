@@ -84,7 +84,10 @@ for epoch in range(40):
     
 # You can change the training loop numbers 20, 30, 40... 
 
-# Result
+----------------------------------------------------------------------------------------------------------
+
+# Result:
+The accuracy looks quite acceptable. It would be great if we could develop it.
 
 Epoch 1, Loss: 3.4504
 Validation Loss after Epoch 1: 3.2307
