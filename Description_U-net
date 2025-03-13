@@ -1,2 +1,28 @@
+# This simple U-net model is built for automatic segmentation of random nano-plastic images.
+
+
+# All required files are located in the folder "U-net"  
+  Path: "/home/nemolinux/Python/sam2/notebooks/Machine Learning model/Model_segmentation/U-net
+
+
+
+# Process
+1. Run the "U-net_final_v2" 
+  - modify the file that you want to try to segment and the corresponding path directory for loading image and saving the result.
+
+2. Run the "Inference_v2"
+  - Load the trained model with the path directory.
+
+3. Run the "Implementation of U-net model"
+  - Input a new image to the model and check the result in your path directory.
+
+
+
+# Result
+Something is wrong with the colorization, only can see the single-color-filled image.
+
+
+
+
 
 
