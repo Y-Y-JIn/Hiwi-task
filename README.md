@@ -3,7 +3,7 @@
 
 ## Model Classification 
 
-### 1. automatic Segmentation model
+### 1. Automatic Segmentation model
 LSTM-UNet<br />
 Mask R-CNN<br />
 U-net<br />
