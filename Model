@@ -1,0 +1,205 @@
+import os
+from glob import glob
+import cv2
+import json
+import numpy as np
+
+def convert_segmented_image_to_annotations(segmented_img_path, image_id, category_id=1, background_color=[0, 0, 0], quantize_level=64):
+    """
+    Given a segmented image (multi-colored mask), extract instance annotations.
+    Uses color quantization to reduce the number of unique colors.
+    Returns a list of annotation dictionaries and the image height and width.
+    """
+    # Read the image (in RGB)
+    img = cv2.imread(segmented_img_path)
+    if img is None:
+        raise ValueError(f"Could not load image at {segmented_img_path}")
+    img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+    H, W, _ = img.shape
+
+    # Quantize the colors: round each channel to the nearest multiple of quantize_level
+    img_quantized = (np.round(img / quantize_level) * quantize_level).astype(np.uint8)
+
+    # Get unique colors from the quantized image
+    colors = np.unique(img_quantized.reshape(-1, 3), axis=0)
+    
+    annotations = []
+    ann_id = 0
+    for color in colors:
+        # Skip background
+        if np.all(color == background_color):
+            continue
+
+        # Create a binary mask: pixels matching this quantized color become 1
+        mask = np.all(img_quantized == color, axis=2).astype(np.uint8)
+        if mask.sum() == 0:
+            continue
+
+        # Find contours for the mask
+        contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        if len(contours) == 0:
+            continue
+
+        # Use the largest contour for this instance
+        contour = max(contours, key=cv2.contourArea)
+        area = float(cv2.contourArea(contour))
+        # Optionally skip very small regions to remove noise
+        if area < 100:
+            continue
+        
+        x, y, w_box, h_box = cv2.boundingRect(contour)
+        bbox = [x, y, w_box, h_box]
+
+        # Flatten contour as a simple polygon segmentation
+        segmentation = [contour.flatten().tolist()]
+
+        ann = {
+            "segmentation": segmentation,
+            "area": area,
+            "iscrowd": 0,
+            "image_id": image_id,
+            "bbox": bbox,
+            "category_id": category_id,
+            "id": ann_id
+        }
+        annotations.append(ann)
+        ann_id += 1
+
+    return annotations, H, W
+
+def normalize_filename(name):
+    """Normalize filenames by removing extra spaces and underscores, and lowercasing."""
+    return name.strip().replace("  ", " ").replace("_", " ").lower()
+
+###############################################
+# Configuration: Update these paths as needed
+###############################################
+original_folder = "/home/nemolinux/Python/sam2/notebooks/image_SEM/original_image"
+mask_folder = "/home/nemolinux/Python/sam2/notebooks/image_SEM/segmented_images"
+
+# Define subfolder names (corresponding pairs)
+original_subfolders = ["20210215", "20210412", "20210415", "HR_np", "soil_extracts"]
+mask_subfolders = ["20210215_v3", "20210412_v3", "20210415_v3", "HR_np_v3", "soil_extracts_v3"]
+
+# Where to save the final COCO JSON annotations
+output_json_path = "dataset_annotations.json"
+
+
+
+# Build the COCO-style dataset dictionary
+###############################################
+dataset_dict = {"images": [], "annotations": [], "categories": [{"id": 1, "name": "particle"}]}
+ann_global_id = 0
+img_id = 1
+total_matches = 0
+
+for orig_sub, mask_sub in zip(original_subfolders, mask_subfolders):
+    orig_sub_folder = os.path.join(original_folder, orig_sub)
+    mask_sub_folder = os.path.join(mask_folder, mask_sub)
+    
+    # Gather all image files from each subfolder (assume .tif for originals and .jpg for masks)
+    orig_paths = glob(os.path.join(orig_sub_folder, "*.tif"))
+    mask_paths_list = glob(os.path.join(mask_sub_folder, "*.jpg"))
+    
+    # Create dictionaries mapping normalized filename to full path
+    orig_images = {normalize_filename(os.path.splitext(os.path.basename(p))[0]): p for p in orig_paths}
+    mask_images = {normalize_filename(os.path.splitext(os.path.basename(p))[0]): p for p in mask_paths_list}
+    
+    # Find matching filenames between originals and masks
+    matched_filenames = set(orig_images.keys()).intersection(mask_images.keys())
+    total_matches += len(matched_filenames)
+    
+    for filename in matched_filenames:
+        orig_path = orig_images[filename]
+        seg_path = mask_images[filename]
+        
+        # Load original image to get dimensions
+        img = cv2.imread(orig_path)
+        if img is None:
+            continue
+        h, w, _ = img.shape
+        
+        # Add image info to dataset dictionary
+        dataset_dict["images"].append({
+            "id": img_id,
+            "file_name": os.path.basename(orig_path),
+            "height": h,
+            "width": w
+        })
+        
+        # Convert segmented mask to COCO-style annotations
+        anns, H_img, W_img = convert_segmented_image_to_annotations(seg_path, img_id, quantize_level=64)
+        for ann in anns:
+            ann["id"] = ann_global_id
+            ann_global_id += 1
+            dataset_dict["annotations"].append(ann)
+        
+        img_id += 1
+        
+        # Print progress every 10 images
+        if img_id % 10 == 0:
+            print(f"Processed {img_id} images so far...")
+
+print(f"Total matched image-mask pairs: {total_matches}")
+
+###############################################
+import os
+from detectron2.data.datasets import register_coco_instances
+from detectron2.data import MetadataCatalog, DatasetCatalog
+import cv2
+from detectron2.utils.visualizer import Visualizer
+import matplotlib.pyplot as plt
+
+# ---------------------------------------------------------------------
+# Step 1: Define Absolute Paths for Your Dataset
+# ---------------------------------------------------------------------
+# Path to your COCO-style JSON annotations file:
+json_file = os.path.abspath("/home/nemolinux/Python/sam2/notebooks/Machine Learning model/model_segmentation/Mask R-CNN/dataset_annotations.json")
+print("Using JSON file:", json_file)
+
+# Root directory where your original images are stored.
+# This directory should contain the subfolders (e.g., "20210215", "20210412", etc.)
+image_root = os.path.abspath("/home/nemolinux/Python/sam2/notebooks/image_SEM/original_image")
+print("Using image root:", image_root)
+
+# Give your dataset a name:
+dataset_name = "particle_dataset"
+
+# ---------------------------------------------------------------------
+# Step 2: Register the Dataset in Detectron2
+# ---------------------------------------------------------------------
+register_coco_instances(dataset_name, {}, json_file, image_root)
+
+# Retrieve metadata to verify registration:
+metadata = MetadataCatalog.get(dataset_name)
+print("Dataset metadata:", metadata)
+
+# Retrieve the dataset dictionaries (list of dicts)
+dataset_dicts = DatasetCatalog.get(dataset_name)
+print(f"Number of images in the dataset: {len(dataset_dicts)}")
+
+# ---------------------------------------------------------------------
+# Step 3: Visualize a Sample Image with Annotations
+# ---------------------------------------------------------------------
+if len(dataset_dicts) > 0:
+    sample = dataset_dicts[0]
+    # Construct the full image path using the image root and file name
+    img_path = os.path.join(image_root, sample["file_name"])
+    img = cv2.imread(img_path)
+    if img is None:
+        raise ValueError(f"Image not found at {img_path}")
+    # Convert BGR (OpenCV default) to RGB for visualization
+    img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+    
+    # Create a Visualizer and draw the annotations on the image
+    v = Visualizer(img, metadata=metadata, scale=1.0)
+    out = v.draw_dataset_dict(sample)
+    
+    plt.figure(figsize=(12, 8))
+    # Detectron2's Visualizer returns an image in BGR format; convert it to RGB for matplotlib.
+    plt.imshow(out.get_image()[:, :, ::-1])
+    plt.axis("off")
+    plt.title("Sample Image with Annotations")
+    plt.show()
+else:
+    print("No images found in the dataset!")
