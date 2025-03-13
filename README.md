@@ -7,7 +7,7 @@
 1. sam2_image_predictor_update_2nd.ipynb ,
    "literally sam2 model script"
 
-3. image_editor.ipynb ,   "image editor script to crop the bottom of SEM image"
+3. image_editor.ipynb ,   "image editor script to crop the bottom of SEM image about setting"
 
 4. original_image , 
      "original image dataset: 5 different image folders (tif.file)"<br /><br />
