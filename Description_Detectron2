@@ -1,0 +1,5 @@
+# This model is built for automatic segmentation of random nano-plastic images.
+
+# Issue: To implement the detectron2, the Python version has to be downgraded (e.g. 3.9). I tried to download the old version of Python in the new virtual environment,
+  it still doesn't work. 
+
