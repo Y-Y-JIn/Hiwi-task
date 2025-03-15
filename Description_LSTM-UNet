@@ -2,6 +2,9 @@
 # This model is from the original GitHub address: https://github.com/arbellea/LSTM-UNet
   Follow the guidance on it
 
+# Overall path directory: home/linux/LSTM-UNet/..
+  You can see all the related sub-folders to the model here.
+
 
 # It is necessary to install or update the version of tools in the "requirements.txt" - This work has been done.
 
