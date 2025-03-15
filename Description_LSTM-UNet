@@ -1,1 +1,30 @@
 
+# This model is from the original GitHub address: https://github.com/arbellea/LSTM-UNet
+  Follow the guidance on it
+
+
+# It is necessary to install or update the version of tools in the "requirements.txt" - This work has been done.
+
+
+# Data (original dataset we downloaded) is located in the folder name "CellTrackingChallenge"
+
+        path: home/linux/LSTM-UNet/CellTrackingChallenge/Training/PhC-C2DH-U373_training dataset/...
+              home/linux/LSTM-UNet/CellTrackingChallenge/Testing/PhC-C2DH-U373/...
+
+
+# The path directory should be modified when you save the updated location of each dataset.
+# Open the Params.py file and change the paths for ROOT_DATA_DIR and ROOT_SAVE_DIR. ROOT_DATA_DIR should point to the directory of the cell tracking challenge training data: /Training and ROOT_SAVE_DIR should point to whichever directory you would like to save the checkpoints and tensorboard logs.
+
+  Check the Files: 1. DataHandeling.py
+                   2. Params.py
+
+
+
+# Run the code on Terminal: 
+  1. source ~/my_lstm_unet_env/bin/activate [Go to the virtual environment for requirements] or you can make your own space.
+  2. python3 train2D.py
+
+
+# Result
+  We can see lots of errors. The mask data from the given dataset is problematic and shows all black, not segmented images.
+  This has to be solved to move to the next step.
