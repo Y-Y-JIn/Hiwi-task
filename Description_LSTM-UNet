@@ -16,7 +16,9 @@
 
 
 # The path directory should be modified when you save the updated location of each dataset.
-# Open the Params.py file and change the paths for ROOT_DATA_DIR and ROOT_SAVE_DIR. ROOT_DATA_DIR should point to the directory of the cell tracking challenge training data: /Training and ROOT_SAVE_DIR should point to whichever directory you would like to save the checkpoints and tensorboard logs.
+# Open the Params.py file and change the paths for ROOT_DATA_DIR and ROOT_SAVE_DIR. 
+ROOT_DATA_DIR should point to the directory of the cell tracking challenge training data: /Training and ROOT_SAVE_DIR should point 
+to whichever directory you would like to save the checkpoints and tensorboard logs.
 
   Check the Files: 1. DataHandeling.py
                    2. Params.py
