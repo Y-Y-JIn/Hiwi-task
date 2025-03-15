@@ -1,6 +1,13 @@
 # Hiwi-task
 
 
+## If you wanna open the code, files related to the different models in the VSCode directly, 
+Go to the "open recent" - "~/Python [WSL:Ubuntu]" & open the folder
+
+## If you wanna see the LSTM-UNet folder, 
+Go to the "open recent" - "/home/nemolinux/[WSL: Ubuntu]" & open the folder
+
+
 ## Model Classification 
 
 ### 1. Automatic Segmentation model
