@@ -31,5 +31,5 @@ to whichever directory you would like to save the checkpoints and tensorboard lo
 
 
 # Result
-  We can see lots of errors. The mask data from the given dataset is problematic and shows all black, not segmented images.
-  This has to be solved to move to the next step.
+  We can see many errors. The mask data from the given dataset is problematic; it shows all black, not segmented images.
+  This has to be solved to proceed to the next step.
