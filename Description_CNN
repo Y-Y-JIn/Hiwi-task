@@ -1,4 +1,5 @@
 This CNN model is built in the same way as the ResNet 50 model for the classification and labeling of random images.
+The result is clear, but the training and test accuracy is too low.
 
 
 # File path: "/home/nemolinux/Python/sam2/notebooks/Machine Learning model/Model/ML_model_CNN"
